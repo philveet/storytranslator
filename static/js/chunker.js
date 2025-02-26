@@ -6,7 +6,7 @@
 class TextChunker {
     constructor(options = {}) {
         // Default settings
-        this.maxChunkSize = options.maxChunkSize || 800; // words per chunk
+        this.maxChunkSize = options.maxChunkSize || 500; // words per chunk
         this.overlapSize = options.overlapSize || 50; // words to overlap between chunks
         this.separators = options.separators || ['.', '!', '?', '\n\n']; // sentence/paragraph separators
     }

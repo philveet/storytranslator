@@ -11,7 +11,13 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for development
-app.secret_key = os.getenv("SECRET_KEY") or "dev-secret-key"
+# Add warning log when falling back to default secret key
+secret_key = os.getenv("SECRET_KEY")
+if not secret_key:
+    if os.getenv('FLASK_ENV') != 'development':
+        print("WARNING: Using default secret key in production environment. This is a security risk!")
+    secret_key = "dev-secret-key"
+app.secret_key = secret_key
 
 # Configure OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -46,7 +52,21 @@ def index():
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
-    if data and data.get('username') == USERNAME and data.get('password') == PASSWORD:
+    
+    # Add fallback check for missing environment variables
+    configured_username = USERNAME
+    configured_password = PASSWORD
+    
+    # If auth credentials are not configured, check for development environment
+    if not configured_username or not configured_password:
+        if os.getenv('FLASK_ENV') == 'development':
+            # In development, allow a default login if env vars aren't set
+            if data and data.get('username') == 'admin' and data.get('password') == 'admin':
+                session['authenticated'] = True
+                return jsonify({"success": True})
+        return jsonify({"error": "Authentication not properly configured"}), 401
+    
+    if data and data.get('username') == configured_username and data.get('password') == configured_password:
         session['authenticated'] = True
         return jsonify({"success": True})
     return jsonify({"error": "Invalid credentials"}), 401
@@ -97,7 +117,8 @@ def translate_chunk():
                 {"role": "system", "content": f"You are a professional translator. Translate the provided text to {AVAILABLE_LANGUAGES[target_language]} while preserving the original formatting, tone, and meaning."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.3
+            temperature=0.3,
+            timeout=280  # 280 second timeout
         )
         
         translated_text = response.choices[0].message.content
