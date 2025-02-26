@@ -1,15 +1,12 @@
 /**
  * UI interactions for Story Translator
- * Handles form toggles, theme switching, and result display
+ * Handles form toggles and result display
  */
 
 class UI {
     constructor() {
         // Elements
-        this.themeSwitch = document.getElementById('theme-switch');
-        this.inputToggles = document.querySelectorAll('.input-toggle .btn');
         this.textInputContainer = document.getElementById('text-input-container');
-        this.fileInputContainer = document.getElementById('file-input-container');
         this.copyResultBtn = document.getElementById('copy-result');
         this.toggleViewBtn = document.getElementById('toggle-view');
         this.singleView = document.getElementById('single-view');
@@ -26,47 +23,12 @@ class UI {
      */
     init() {
         // Set up event listeners
-        this.themeSwitch.addEventListener('change', this.toggleTheme.bind(this));
-        this.inputToggles.forEach(toggle => {
-            toggle.addEventListener('click', this.toggleInputMethod.bind(this));
-        });
         this.copyResultBtn.addEventListener('click', this.copyResult.bind(this));
         this.toggleViewBtn.addEventListener('click', this.toggleResultView.bind(this));
         this.inputText.addEventListener('input', this.updateWordCount.bind(this));
         
         // Load available languages
         this.loadLanguages();
-    }
-
-    /**
-     * Toggle between light and dark theme
-     */
-    toggleTheme() {
-        // As our theme is already dark, we would implement light theme here
-        // For now, we'll just keep it as is
-    }
-
-    /**
-     * Toggle between text and file input methods
-     * @param {Event} event - The click event
-     */
-    toggleInputMethod(event) {
-        const inputType = event.target.dataset.input;
-        
-        // Update active toggle button
-        this.inputToggles.forEach(toggle => {
-            toggle.classList.remove('active');
-        });
-        event.target.classList.add('active');
-        
-        // Show/hide input containers
-        if (inputType === 'text') {
-            this.textInputContainer.classList.remove('hidden');
-            this.fileInputContainer.classList.add('hidden');
-        } else {
-            this.textInputContainer.classList.add('hidden');
-            this.fileInputContainer.classList.remove('hidden');
-        }
     }
 
     /**
@@ -141,12 +103,23 @@ class UI {
             // Clear existing options
             this.targetLanguageSelect.innerHTML = '';
             
-            // Add options for each language
+            // Add Spanish as the first option
+            if (languages.spanish) {
+                const spanishOption = document.createElement('option');
+                spanishOption.value = 'spanish';
+                spanishOption.textContent = languages.spanish;
+                spanishOption.selected = true;
+                this.targetLanguageSelect.appendChild(spanishOption);
+            }
+            
+            // Add the rest of the languages (excluding Spanish which was already added)
             Object.entries(languages).forEach(([code, name]) => {
-                const option = document.createElement('option');
-                option.value = code;
-                option.textContent = name;
-                this.targetLanguageSelect.appendChild(option);
+                if (code !== 'spanish') {
+                    const option = document.createElement('option');
+                    option.value = code;
+                    option.textContent = name;
+                    this.targetLanguageSelect.appendChild(option);
+                }
             });
         } catch (error) {
             console.error('Failed to load languages:', error);

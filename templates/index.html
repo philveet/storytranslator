@@ -10,10 +10,6 @@
     <div class="container">
         <header>
             <h1>Story Translator</h1>
-            <div class="theme-toggle">
-                <label for="theme-switch">Dark Mode</label>
-                <input type="checkbox" id="theme-switch" checked>
-            </div>
         </header>
 
         <!-- Authentication Section -->
@@ -38,7 +34,6 @@
         <!-- Main Application Section (hidden initially) -->
         <main id="app-section" class="section hidden">
             <div class="card">
-                <h2>Translation Settings</h2>
                 <form id="translation-form">
                     <div class="form-group">
                         <label for="target-language">Target Language</label>
@@ -46,21 +41,10 @@
                             <!-- Will be populated dynamically -->
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label for="input-method">Input Method</label>
-                        <div class="input-toggle">
-                            <button type="button" class="btn toggle active" data-input="text">Text</button>
-                            <button type="button" class="btn toggle" data-input="file">File</button>
-                        </div>
-                    </div>
                     <div id="text-input-container" class="form-group">
                         <label for="input-text">Paste Your Story (up to 50,000 words)</label>
                         <textarea id="input-text" name="input-text" rows="8" placeholder="Paste your text here..."></textarea>
                         <div class="word-count">Words: <span id="word-count">0</span></div>
-                    </div>
-                    <div id="file-input-container" class="form-group hidden">
-                        <label for="input-file">Upload Text File (.txt)</label>
-                        <input type="file" id="input-file" name="input-file" accept=".txt">
                     </div>
                     <button type="submit" class="btn primary" id="translate-btn">Translate</button>
                 </form>
@@ -79,10 +63,6 @@
             <!-- Results Section -->
             <div id="results-container" class="card hidden">
                 <h2>Translation Results</h2>
-                <div class="quality-indicator">
-                    <span>Quality Check: </span>
-                    <span id="quality-indicator"></span>
-                </div>
                 <div class="result-actions">
                     <button class="btn secondary" id="copy-result">Copy Result</button>
                     <button class="btn secondary" id="toggle-view">Side by Side View</button>

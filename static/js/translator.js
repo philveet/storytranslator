@@ -76,22 +76,11 @@ class Translator {
         const form = event.target;
         this.targetLanguage = form.elements['target-language'].value;
         
-        // Get text input based on input method
-        const activeInput = document.querySelector('.input-toggle .active').dataset.input;
-        
         try {
-            if (activeInput === 'text') {
-                this.originalText = document.getElementById('input-text').value.trim();
-                if (!this.originalText) {
-                    throw new Error('Please enter some text to translate');
-                }
-            } else {
-                const fileInput = document.getElementById('input-file');
-                if (!fileInput.files || !fileInput.files[0]) {
-                    throw new Error('Please select a file to translate');
-                }
-                
-                this.originalText = await this.readFile(fileInput.files[0]);
+            // Get text from textarea
+            this.originalText = document.getElementById('input-text').value.trim();
+            if (!this.originalText) {
+                throw new Error('Please enter some text to translate');
             }
             
             // Check text length
@@ -107,20 +96,6 @@ class Translator {
             this.showMessage(error.message, 'error');
             console.error('Preparation error:', error);
         }
-    }
-
-    /**
-     * Read a text file
-     * @param {File} file - The file to read
-     * @returns {Promise<string>} - The file contents
-     */
-    readFile(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (event) => resolve(event.target.result);
-            reader.onerror = (error) => reject(error);
-            reader.readAsText(file);
-        });
     }
 
     /**
@@ -446,8 +421,8 @@ class Translator {
         this.translatedTextSide.textContent = translatedText;
         this.originalTextDisplay.textContent = this.originalText;
         
-        // Check quality
-        this.checkQuality();
+        // Quality check is still performed internally but not displayed
+        this.checkQuality(false);
         
         // Show results container
         this.progressContainer.classList.add('hidden');
@@ -458,8 +433,9 @@ class Translator {
 
     /**
      * Check translation quality
+     * @param {boolean} updateDisplay - Whether to update the quality indicator display
      */
-    checkQuality() {
+    checkQuality(updateDisplay = true) {
         // Calculate original and translated word counts
         const originalWords = this.originalText.split(/\s+/).length;
         const translatedWords = this.results.reduce((total, result) => total + result.translated_length, 0);
@@ -472,16 +448,22 @@ class Translator {
         // Thresholds for quality assessment
         if (ratio < 0.7) {
             qualityStatus = 'Warning: Translation appears to be missing content.';
-            this.qualityIndicator.className = 'warning';
+            if (updateDisplay) this.qualityIndicator.className = 'warning';
         } else if (ratio > 1.3) {
             qualityStatus = 'Warning: Translation appears to have additional content.';
-            this.qualityIndicator.className = 'warning';
+            if (updateDisplay) this.qualityIndicator.className = 'warning';
         } else {
             qualityStatus = 'Good: Word count ratio is within expected range.';
-            this.qualityIndicator.className = 'success';
+            if (updateDisplay) this.qualityIndicator.className = 'good';
         }
         
-        this.qualityIndicator.textContent = qualityStatus;
+        // Log quality info but don't update display
+        console.log(`Quality check: ${qualityStatus} (Ratio: ${ratio.toFixed(2)})`);
+        
+        // Only update the display if requested
+        if (updateDisplay) {
+            this.qualityIndicator.textContent = qualityStatus;
+        }
     }
 
     /**

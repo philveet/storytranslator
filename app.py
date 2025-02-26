@@ -114,7 +114,7 @@ def translate_chunk():
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": f"You are a professional translator. Translate the provided text to {AVAILABLE_LANGUAGES[target_language]} while preserving the original formatting, tone, and meaning."},
+                {"role": "system", "content": f"You are a professional translator. Translate the provided text to {AVAILABLE_LANGUAGES[target_language]} while EXACTLY preserving the original paragraph structure, line breaks, and formatting. Do not add or remove paragraph breaks."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.3,
