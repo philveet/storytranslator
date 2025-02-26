@@ -2,7 +2,7 @@ import os
 from flask import Flask, request, jsonify, render_template, session
 from flask_cors import CORS
 from dotenv import load_dotenv
-import openai
+from openai import OpenAI
 import json
 from functools import wraps
 
@@ -14,7 +14,7 @@ CORS(app)  # Enable CORS for development
 app.secret_key = os.getenv("SECRET_KEY") or "dev-secret-key"
 
 # Configure OpenAI
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Authentication
 USERNAME = os.getenv("AUTH_USERNAME")
@@ -69,6 +69,7 @@ def get_languages():
 @app.route('/translate-chunk', methods=['POST'])
 @require_auth
 def translate_chunk():
+    print("Received translation request:", request.json)
     data = request.json
     
     if not data or 'text' not in data or 'target_language' not in data:
@@ -90,8 +91,8 @@ def translate_chunk():
             prompt = f"Translate the following text to {AVAILABLE_LANGUAGES[target_language]}:\n{text}"
             
         # Call OpenAI API for translation
-        response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
+        response = client.chat.completions.create(
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": f"You are a professional translator. Translate the provided text to {AVAILABLE_LANGUAGES[target_language]} while preserving the original formatting, tone, and meaning."},
                 {"role": "user", "content": prompt}
@@ -100,6 +101,7 @@ def translate_chunk():
         )
         
         translated_text = response.choices[0].message.content
+        print("Translation successful")
         
         # Return the translated chunk
         return jsonify({
@@ -109,6 +111,7 @@ def translate_chunk():
         })
         
     except Exception as e:
+        print(f"Translation error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
