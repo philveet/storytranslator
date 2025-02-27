@@ -106,15 +106,15 @@ def translate_chunk():
         # Prepare the prompt with context if available
         prompt = text
         if context:
-            prompt = f"Previous translation context: {context}\n\nTranslate the following text to {AVAILABLE_LANGUAGES[target_language]}:\n{text}"
+            prompt = f"Previous translation context: {context}\n\nPlease translate the following text into {AVAILABLE_LANGUAGES[target_language]}. Ensure accuracy and fidelity to the original while maintaining the natural flow, tone, and style of the text. Avoid overly literal translation—adapt idioms, expressions, and sentence structures as needed so that the result sounds natural and authentic in {AVAILABLE_LANGUAGES[target_language]}.\nAccuracy is essential, but prioritize readability and fluency over word-for-word translation.\nPreserve the original paragraph structure, line breaks, and formatting exactly as in the source text.\nHere is the text:\n{text}"
         else:
-            prompt = f"Translate the following text to {AVAILABLE_LANGUAGES[target_language]}:\n{text}"
+            prompt = f"Please translate the following text into {AVAILABLE_LANGUAGES[target_language]}. Ensure accuracy and fidelity to the original while maintaining the natural flow, tone, and style of the text. Avoid overly literal translation—adapt idioms, expressions, and sentence structures as needed so that the result sounds natural and authentic in {AVAILABLE_LANGUAGES[target_language]}.\nAccuracy is essential, but prioritize readability and fluency over word-for-word translation.\nPreserve the original paragraph structure, line breaks, and formatting exactly as in the source text.\nHere is the text:\n{text}"
             
         # Call OpenAI API for translation
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": f"You are a professional translator. Translate the provided text to {AVAILABLE_LANGUAGES[target_language]} while EXACTLY preserving the original paragraph structure, line breaks, and formatting. Do not add or remove paragraph breaks."},
+                {"role": "system", "content": f"You are an expert literary translator with a deep understanding of both the source language and {AVAILABLE_LANGUAGES[target_language]}. Your goal is to produce high-quality translations that are not overly literal but instead flow naturally and feel authentic in {AVAILABLE_LANGUAGES[target_language]}. You must ensure accuracy and fidelity to the original while preserving its tone, style, and emotional impact. The translation should read as if it were originally written in {AVAILABLE_LANGUAGES[target_language]}.\nPay close attention to idioms and expressions, adapting them where necessary to maintain readability and authenticity. Do not omit or add any content—your task is to translate, not rewrite or summarize.\nEXACTLY preserve the original paragraph structure, line breaks, and formatting. Do not add or remove paragraph breaks."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.3,
