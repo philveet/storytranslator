@@ -104,9 +104,13 @@ class Translator {
      * @param {string} type - The message type (info, error, success, warning)
      */
     showMessage(message, type = 'info') {
-        // For simplicity, we'll use alert here
-        // In production, you'd use a proper UI element
-        alert(`${type.toUpperCase()}: ${message}`);
+        // Use the non-blocking notification system instead of alert
+        if (window.notifications) {
+            window.notifications.show(message, type);
+        } else {
+            // Fallback to alert only if notifications aren't available
+            alert(`${type.toUpperCase()}: ${message}`);
+        }
     }
 
     /**
@@ -134,7 +138,7 @@ class Translator {
         try {
             console.log('Starting translation process...');
             
-            // Split text into chunks - simplified chunking logic
+            // Split text into chunks
             this.chunks = this.splitIntoChunks(this.originalText);
             
             if (this.chunks.length === 0) {
@@ -142,31 +146,100 @@ class Translator {
             }
             
             console.log(`Text split into ${this.chunks.length} chunks`);
-            this.chunkInfo.textContent = `Processing chunk 0 of ${this.chunks.length}`;
+            this.chunkInfo.textContent = `Processing ${this.chunks.length} chunks`;
             
-            // Process chunks in sequence
-            for (let i = 0; i < this.chunks.length; i++) {
+            // Context-aware parallel processing
+            const concurrencyLimit = 2; // Adjust based on your API limits
+            const results = new Array(this.chunks.length);
+            let completedChunks = 0;
+            
+            // Track which chunks are processing or completed
+            const chunkStatus = new Array(this.chunks.length).fill('pending');
+            
+            // Process all chunks
+            while (completedChunks < this.chunks.length) {
                 // Check if operation was aborted
                 if (this.abortController.signal.aborted) {
                     throw new Error('Translation aborted');
                 }
                 
-                const chunk = this.chunks[i];
-                this.chunkInfo.textContent = `Processing chunk ${i + 1} of ${this.chunks.length}`;
-                console.log(`Processing chunk ${i + 1} of ${this.chunks.length}`);
+                // Find chunks that can be processed now (dependencies satisfied)
+                const availableChunks = [];
                 
-                // Try to translate chunk with retries
-                const translatedChunk = await this.translateChunkWithRetry(chunk);
+                for (let i = 0; i < this.chunks.length; i++) {
+                    // Skip already processing or completed chunks
+                    if (chunkStatus[i] !== 'pending') continue;
+                    
+                    // First chunk can always start
+                    if (i === 0) {
+                        availableChunks.push(i);
+                        continue;
+                    }
+                    
+                    // Other chunks can start if their dependency (previous chunk) is completed
+                    const dependencyIdx = i - 1; // Each chunk depends on its immediately preceding chunk
+                    
+                    if (chunkStatus[dependencyIdx] === 'completed') {
+                        availableChunks.push(i);
+                    }
+                    
+                    // Limit available chunks to maintain concurrency limit
+                    if (availableChunks.length >= concurrencyLimit) break;
+                }
                 
-                // Add to results
-                this.results.push(translatedChunk);
+                // If no chunks can be processed right now, wait for some to complete
+                if (availableChunks.length === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    continue;
+                }
                 
-                // Extract context for next chunk - simplified
-                this.context = this.extractContext(translatedChunk.translated_text);
+                // Start processing available chunks
+                const processingPromises = availableChunks.map(async (chunkIndex) => {
+                    // Mark as processing
+                    chunkStatus[chunkIndex] = 'processing';
+                    const chunk = this.chunks[chunkIndex];
+                    
+                    // Get context from previous chunk if available
+                    let chunkContext = '';
+                    if (chunkIndex > 0) {
+                        const prevChunkIndex = chunkIndex - 1;
+                        if (results[prevChunkIndex]) {
+                            chunkContext = this.extractContext(results[prevChunkIndex].translated_text);
+                        }
+                    }
+                    
+                    try {
+                        console.log(`Processing chunk ${chunkIndex + 1} of ${this.chunks.length}`);
+                        this.chunkInfo.textContent = `Processing chunk ${chunkIndex + 1}...`;
+                        
+                        // Translate the chunk
+                        const result = await this.translateChunkWithRetry({
+                            ...chunk,
+                            context: chunkContext
+                        });
+                        
+                        // Store result
+                        results[chunkIndex] = result;
+                        chunkStatus[chunkIndex] = 'completed';
+                        completedChunks++;
+                        
+                        // Update progress
+                        this.updateProgress(completedChunks / this.chunks.length * 100);
+                        this.chunkInfo.textContent = `Completed ${completedChunks} of ${this.chunks.length} chunks`;
+                        
+                        return result;
+                    } catch (error) {
+                        chunkStatus[chunkIndex] = 'error';
+                        throw error;
+                    }
+                });
                 
-                // Update progress
-                this.updateProgress((i + 1) / this.chunks.length * 100);
+                // Wait for this batch to complete
+                await Promise.all(processingPromises);
             }
+            
+            // Store results and filter out any nulls
+            this.results = results.filter(Boolean);
             
             console.log('All chunks translated successfully');
             
@@ -293,7 +366,7 @@ class Translator {
     }
 
     /**
-     * Improved retry mechanism for translating chunks
+     * Enhanced translateChunkWithRetry method that guarantees either success or clear failure
      * @param {Object} chunk - The chunk to translate
      * @returns {Promise<Object>} - The translation result
      */
@@ -319,8 +392,8 @@ class Translator {
                 const jitter = Math.random() * 0.3 + 0.85; // random between 0.85 and 1.15
                 const delay = Math.pow(2, retryCount) * baseDelay * jitter;
                 
-                this.showMessage(`Retrying chunk ${chunk.index + 1} in ${Math.round(delay/1000)} seconds...`, 'warning');
-                console.log(`Will retry in ${Math.round(delay/1000)} seconds...`);
+                console.log(`Will retry chunk ${chunk.index + 1} in ${Math.round(delay/1000)} seconds...`);
+                this.chunkInfo.textContent = `Retrying chunk ${chunk.index + 1} (attempt ${retryCount + 2})...`;
 
                 // Wait before retrying
                 await new Promise(resolve => setTimeout(resolve, delay));
@@ -328,8 +401,15 @@ class Translator {
                 // Retry with incremented counter
                 return this.translateChunkWithRetry(chunk, retryCount + 1);
             } else {
-                console.error(`Failed to translate chunk ${chunk.index + 1} after ${maxRetries} retries`);
-                throw new Error(`Failed to translate chunk ${chunk.index + 1} after ${maxRetries} retries`);
+                // CRITICAL: Permanent failure after max retries
+                const errorMessage = `Failed to translate chunk ${chunk.index + 1} after ${maxRetries} retries`;
+                console.error(errorMessage);
+                
+                // Display clear error to user
+                this.showMessage(`Translation failed: ${errorMessage}. Please try again later.`, 'error');
+                
+                // This error will propagate up and cause the entire translation to abort
+                throw new Error(errorMessage);
             }
         }
     }
@@ -406,28 +486,110 @@ class Translator {
     assembleResults() {
         console.log('Assembling translation results...');
         
+        // CRITICAL SAFETY CHECK: Verify all chunks were translated
+        const missingChunks = [];
+        for (let i = 0; i < this.chunks.length; i++) {
+            if (!this.results[i]) {
+                missingChunks.push(i);
+            }
+        }
+        
+        // If any chunks are missing, abort with clear error
+        if (missingChunks.length > 0) {
+            const errorMessage = `Translation incomplete. Missing chunks: ${missingChunks.join(', ')}`;
+            console.error(errorMessage);
+            this.showMessage(`ERROR: ${errorMessage}. Please try again.`, 'error');
+            
+            // Hide progress and don't show incomplete results
+            this.progressContainer.classList.add('hidden');
+            return;
+        }
+        
         // Sort results by chunk index
         this.results.sort((a, b) => a.chunk_index - b.chunk_index);
         
-        // Combine all translated text
-        const translatedText = this.results.map(result => result.translated_text).join(' ');
+        // Calculate total length for progress reporting
+        const totalChunks = this.results.length;
         
-        // Display results
-        this.translatedText.textContent = translatedText;
-        this.translatedTextSide.textContent = translatedText;
-        this.originalTextDisplay.textContent = this.originalText;
+        // Clear any existing content
+        this.translatedText.textContent = '';
+        this.translatedTextSide.textContent = '';
         
-        // Quality check is still performed internally but not displayed
-        this.checkQuality(false);
+        // IMPORTANT: Don't concatenate all text at once - append in chunks
+        // Create a document fragment for better performance (reduces reflows)
+        const fragment = document.createDocumentFragment();
+        const fragmentSide = document.createDocumentFragment();
         
-        // Show results container
-        this.progressContainer.classList.add('hidden');
-        this.resultsContainer.classList.remove('hidden');
-        
-        console.log('Translation completed successfully');
-        
-        // Clean up memory after a short delay to ensure UI has updated
-        setTimeout(() => this.cleanupMemory(), 1000);
+        try {
+            // Efficient memory and DOM management - process in batches
+            const processBatch = (startIdx, batchSize) => {
+                // Process only a subset of results at a time
+                const endIdx = Math.min(startIdx + batchSize, totalChunks);
+                
+                for (let i = startIdx; i < endIdx; i++) {
+                    const result = this.results[i];
+                    
+                    // Create text nodes for better performance than setting innerHTML or textContent
+                    const textNode = document.createTextNode(result.translated_text + ' ');
+                    const textNodeSide = document.createTextNode(result.translated_text + ' ');
+                    
+                    fragment.appendChild(textNode);
+                    fragmentSide.appendChild(textNodeSide);
+                }
+                
+                // If we've processed all chunks
+                if (endIdx >= totalChunks) {
+                    // Append all text at once to minimize DOM operations
+                    this.translatedText.appendChild(fragment);
+                    this.translatedTextSide.appendChild(fragmentSide);
+                    
+                    // Set original text (this is safe since it's just one operation)
+                    this.originalTextDisplay.textContent = this.originalText;
+                    
+                    // Quality check is still performed internally but not displayed
+                    this.checkQuality(false);
+                    
+                    // Show results container
+                    this.progressContainer.classList.add('hidden');
+                    this.resultsContainer.classList.remove('hidden');
+                    
+                    console.log('Translation completed successfully');
+                    
+                    // Clean up memory BEFORE user can interact with the UI
+                    this.cleanupMemory();
+                    return;
+                }
+                
+                // Process next batch in the next event loop to avoid UI blocking
+                setTimeout(() => {
+                    processBatch(endIdx, batchSize);
+                }, 50); // 50ms delay to allow UI updates
+            };
+            
+            // Start processing in batches of 5 chunks at a time
+            processBatch(0, 5);
+            
+        } catch (error) {
+            console.error("Batched rendering failed, using fallback", error);
+            
+            // Original rendering code as fallback
+            const translatedText = this.results.map(result => result.translated_text).join(' ');
+            this.translatedText.textContent = translatedText;
+            this.translatedTextSide.textContent = translatedText;
+            this.originalTextDisplay.textContent = this.originalText;
+            
+            // Quality check is still performed internally but not displayed
+            this.checkQuality(false);
+            
+            // Show results container
+            this.progressContainer.classList.add('hidden');
+            this.resultsContainer.classList.remove('hidden');
+            
+            console.log('Translation completed successfully (using fallback rendering)');
+            
+            // Clean up memory after a short delay to ensure UI has updated
+            setTimeout(() => this.cleanupMemory(), 1000);
+        }
     }
 
     /**
@@ -437,23 +599,30 @@ class Translator {
     cleanupMemory() {
         console.log('Performing memory cleanup...');
         
-        // Store the final assembled text
-        const translatedText = this.results.map(result => result.translated_text).join(' ');
-        
-        // Clear everything except what's needed
+        // No need to rebuild the full text - it's already in the DOM
+        // Just clear all the source data
         this.chunks = null;
         
-        // Replace full results with just the final text
-        this.results = [{ translated_text: translatedText }];
+        // Keep minimal reference to results
+        const originalResultsLength = this.results.length;
+        this.results = [{ translated_text: "(Translation complete)", chunk_index: 0 }];
         
         // Clear context
         this.context = '';
         
-        // Force browser to consider garbage collection by
-        // moving this to the next event loop
+        // Force garbage collection consideration without blocking UI
         setTimeout(() => {
-            console.log('Memory cleanup complete');
+            console.log(`Memory cleanup complete, released data for ${originalResultsLength} chunks`);
         }, 0);
+    }
+
+    /**
+     * Limit how much text is displayed while keeping the full content
+     * Only implement if users complain about performance with very large texts
+     */
+    limitDisplayText() {
+        // Only implement if users complain about performance with very large texts
+        // This would show a subset of the text with pagination controls
     }
 
     /**
