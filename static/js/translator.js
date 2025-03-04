@@ -344,14 +344,10 @@ class Translator {
             const payload = {
                 text: chunk.text,
                 target_language: this.targetLanguage,
-                context: this.context
+                context: chunk.context || this.context
             };
             
-            console.log(`Sending chunk ${chunk.index + 1} to translation API`, {
-                textLength: chunk.text.length,
-                targetLanguage: this.targetLanguage,
-                contextLength: this.context.length
-            });
+            console.log(`Sending chunk ${chunk.index + 1} to translation API`);
             
             const response = await fetch('/translate-chunk', {
                 method: 'POST',
@@ -368,7 +364,6 @@ class Translator {
                     const errorData = await response.json();
                     errorMessage = errorData.error || `HTTP error ${response.status}`;
                 } catch (e) {
-                    // If we can't parse the error JSON
                     errorMessage = `HTTP error ${response.status}: ${response.statusText}`;
                 }
                 throw new Error(errorMessage);
@@ -381,14 +376,13 @@ class Translator {
             }
             
             const result = await response.json();
-            console.log(`Successfully translated chunk ${chunk.index + 1}`, {
-                originalLength: result.original_length,
-                translatedLength: result.translated_length
-            });
             
+            // Return only essential data, dropping the full chunk text to save memory
             return {
-                ...result,
-                chunk_index: chunk.index
+                translated_text: result.translated_text,
+                chunk_index: chunk.index,
+                original_length: result.original_length,
+                translated_length: result.translated_length
             };
         } catch (error) {
             console.error("Translation chunk error:", error);
@@ -410,6 +404,8 @@ class Translator {
      * Assemble results and display the complete translation
      */
     assembleResults() {
+        console.log('Assembling translation results...');
+        
         // Sort results by chunk index
         this.results.sort((a, b) => a.chunk_index - b.chunk_index);
         
@@ -429,6 +425,35 @@ class Translator {
         this.resultsContainer.classList.remove('hidden');
         
         console.log('Translation completed successfully');
+        
+        // Clean up memory after a short delay to ensure UI has updated
+        setTimeout(() => this.cleanupMemory(), 1000);
+    }
+
+    /**
+     * Clean up memory after translation is complete
+     * This keeps only what's needed and releases everything else
+     */
+    cleanupMemory() {
+        console.log('Performing memory cleanup...');
+        
+        // Store the final assembled text
+        const translatedText = this.results.map(result => result.translated_text).join(' ');
+        
+        // Clear everything except what's needed
+        this.chunks = null;
+        
+        // Replace full results with just the final text
+        this.results = [{ translated_text: translatedText }];
+        
+        // Clear context
+        this.context = '';
+        
+        // Force browser to consider garbage collection by
+        // moving this to the next event loop
+        setTimeout(() => {
+            console.log('Memory cleanup complete');
+        }, 0);
     }
 
     /**
