@@ -508,28 +508,31 @@ class Translator {
         // Sort results by chunk index
         this.results.sort((a, b) => a.chunk_index - b.chunk_index);
         
-        // Calculate total length for progress reporting
-        const totalChunks = this.results.length;
-        
-        // Clear any existing content
-        this.translatedText.textContent = '';
-        this.translatedTextSide.textContent = '';
-        
-        // IMPORTANT: Don't concatenate all text at once - append in chunks
-        // Create a document fragment for better performance (reduces reflows)
-        const fragment = document.createDocumentFragment();
-        const fragmentSide = document.createDocumentFragment();
-        
+        // Try the new batched rendering approach
         try {
-            // Efficient memory and DOM management - process in batches
+            // Calculate total length for progress reporting
+            const totalChunks = this.results.length;
+            
+            // Clear any existing content
+            this.translatedText.textContent = '';
+            this.translatedTextSide.textContent = '';
+            
+            // Flag to track if batched rendering completes
+            this._batchedRenderingComplete = false;
+            
+            // Process in batches to avoid blocking UI
             const processBatch = (startIdx, batchSize) => {
+                // Create fragments for better performance
+                const fragment = document.createDocumentFragment();
+                const fragmentSide = document.createDocumentFragment();
+                
                 // Process only a subset of results at a time
                 const endIdx = Math.min(startIdx + batchSize, totalChunks);
                 
                 for (let i = startIdx; i < endIdx; i++) {
                     const result = this.results[i];
                     
-                    // Create text nodes for better performance than setting innerHTML or textContent
+                    // Create text nodes for better performance
                     const textNode = document.createTextNode(result.translated_text + ' ');
                     const textNodeSide = document.createTextNode(result.translated_text + ' ');
                     
@@ -537,13 +540,13 @@ class Translator {
                     fragmentSide.appendChild(textNodeSide);
                 }
                 
+                // Append fragments to DOM
+                this.translatedText.appendChild(fragment);
+                this.translatedTextSide.appendChild(fragmentSide);
+                
                 // If we've processed all chunks
                 if (endIdx >= totalChunks) {
-                    // Append all text at once to minimize DOM operations
-                    this.translatedText.appendChild(fragment);
-                    this.translatedTextSide.appendChild(fragmentSide);
-                    
-                    // Set original text (this is safe since it's just one operation)
+                    // Set original text
                     this.originalTextDisplay.textContent = this.originalText;
                     
                     // Quality check is still performed internally but not displayed
@@ -553,43 +556,67 @@ class Translator {
                     this.progressContainer.classList.add('hidden');
                     this.resultsContainer.classList.remove('hidden');
                     
-                    console.log('Translation completed successfully');
+                    // Mark as complete so fallback doesn't run
+                    this._batchedRenderingComplete = true;
                     
-                    // Clean up memory BEFORE user can interact with the UI
+                    console.log('Translation completed successfully with batched rendering');
+                    
+                    // Clean up memory
                     this.cleanupMemory();
                     return;
                 }
                 
-                // Process next batch in the next event loop to avoid UI blocking
+                // Process next batch after a small delay
                 setTimeout(() => {
                     processBatch(endIdx, batchSize);
-                }, 50); // 50ms delay to allow UI updates
+                }, 50);
             };
             
             // Start processing in batches of 5 chunks at a time
             processBatch(0, 5);
             
+            // We don't proceed past this point in the success case
+            // The remainder of the function serves as a fallback
+            
         } catch (error) {
-            console.error("Batched rendering failed, using fallback", error);
+            // Log the error for debugging
+            console.error('Error with batched rendering, using fallback method:', error);
             
-            // Original rendering code as fallback
-            const translatedText = this.results.map(result => result.translated_text).join(' ');
-            this.translatedText.textContent = translatedText;
-            this.translatedTextSide.textContent = translatedText;
-            this.originalTextDisplay.textContent = this.originalText;
-            
-            // Quality check is still performed internally but not displayed
-            this.checkQuality(false);
-            
-            // Show results container
-            this.progressContainer.classList.add('hidden');
-            this.resultsContainer.classList.remove('hidden');
-            
-            console.log('Translation completed successfully (using fallback rendering)');
-            
-            // Clean up memory after a short delay to ensure UI has updated
-            setTimeout(() => this.cleanupMemory(), 1000);
+            // Only run fallback if batched rendering didn't complete
+            if (!this._batchedRenderingComplete) {
+                this.fallbackAssembleResults();
+            }
         }
+    }
+
+    /**
+     * Fallback method for assembling results when batched rendering fails
+     */
+    fallbackAssembleResults() {
+        console.log('Using fallback rendering method');
+        
+        // Make sure results are sorted (even though we already did this)
+        this.results.sort((a, b) => a.chunk_index - b.chunk_index);
+        
+        // Original method: combine all translated text at once
+        const translatedText = this.results.map(result => result.translated_text).join(' ');
+        
+        // Display results using the original direct approach
+        this.translatedText.textContent = translatedText;
+        this.translatedTextSide.textContent = translatedText;
+        this.originalTextDisplay.textContent = this.originalText;
+        
+        // Quality check is still performed internally but not displayed
+        this.checkQuality(false);
+        
+        // Show results container
+        this.progressContainer.classList.add('hidden');
+        this.resultsContainer.classList.remove('hidden');
+        
+        console.log('Translation completed successfully using fallback method');
+        
+        // Clean up memory after a short delay to ensure UI has updated
+        setTimeout(() => this.cleanupMemory(), 1000);
     }
 
     /**
