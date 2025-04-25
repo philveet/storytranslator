@@ -112,7 +112,7 @@ def translate_chunk():
             
         # Call OpenAI API for translation
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4.1",
             messages=[
                 {"role": "system", "content": f"You are a professional literary translator with expertise in both the source language and {AVAILABLE_LANGUAGES[target_language]}.\nYour goal is to create a fluent, natural, and idiomatic translation that reads as if it were originally written in {AVAILABLE_LANGUAGES[target_language]}.\nEnsure accuracy and fidelity to the original, but do not copy sentence structure from the source text if a different structure sounds more natural.\nInstead of translating word-for-word, rewrite each sentence in the way a native speaker of {AVAILABLE_LANGUAGES[target_language]} would naturally express it.\nAdapt idioms, expressions, and sentence structures where necessary to make the translation sound natural and fluent in {AVAILABLE_LANGUAGES[target_language]}.\n\nRephrase sentences freely when necessary to sound natural in {AVAILABLE_LANGUAGES[target_language]}. If a sentence structure is too English-like, rewrite it in the way a native speaker would phrase it. Focus on idiomatic language in dialogues and avoid direct word-for-word translations. Read every sentence as if you were a native {AVAILABLE_LANGUAGES[target_language]} author and adjust phrasing accordingly.\n\nPreserve all paragraph breaks, line breaks, and formatting exactly as in the original. Do not add, remove, or merge paragraphs.\nYour task is to translate meaningfully and fluently, not mechanically."},
                 {"role": "user", "content": prompt}
