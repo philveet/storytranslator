@@ -33,6 +33,7 @@ AVAILABLE_LANGUAGES = {
     "german": "German",
     "italian": "Italian",
     "portuguese": "Portuguese",
+    "russian": "Russian",
     "czech": "Czech"
 }
 
@@ -99,6 +100,11 @@ def translate_chunk():
     target_language = data['target_language']
     context = data.get('context', '')
     
+    # Optional model selection with whitelist
+    model = data.get('model', 'gpt-4.1')
+    if model not in {"gpt-4.1", "gpt-5"}:
+        model = 'gpt-4.1'
+    
     if target_language not in AVAILABLE_LANGUAGES:
         return jsonify({"error": "Unsupported target language"}), 400
     
@@ -112,7 +118,7 @@ def translate_chunk():
             
         # Call OpenAI API for translation
         response = client.chat.completions.create(
-            model="gpt-4.1",
+            model=model,
             messages=[
                 {"role": "system", "content": f"You are a professional literary translator with expertise in both the source language and {AVAILABLE_LANGUAGES[target_language]}.\nYour goal is to create a fluent, natural, and idiomatic translation that reads as if it were originally written in {AVAILABLE_LANGUAGES[target_language]}.\nEnsure accuracy and fidelity to the original, but choose natural {AVAILABLE_LANGUAGES[target_language]} syntax over copying the source word-for-word.\nAdapt idioms, expressions, and sentence structures where necessary to make the translation sound natural and fluent in {AVAILABLE_LANGUAGES[target_language]}.\n\nRephrase sentences freely when necessary to sound natural in {AVAILABLE_LANGUAGES[target_language]}. If a sentence structure is too English-like, rewrite it in the way a native speaker would phrase it. Focus on idiomatic language in dialogues and avoid direct word-for-word translations. Read every sentence as if you were a native {AVAILABLE_LANGUAGES[target_language]} author and adjust phrasing accordingly.\n\nPreserve all paragraph breaks, line breaks, and formatting exactly as in the original. Do not add, remove, or merge paragraphs.\n\nReturn only the translated text—no notes, explanations, or commentary.\nYour task is to translate meaningfully and fluently, not mechanically."},
                 {"role": "user", "content": prompt}

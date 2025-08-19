@@ -75,6 +75,8 @@ class Translator {
         // Get form data
         const form = event.target;
         this.targetLanguage = form.elements['target-language'].value;
+        // Read selected model (fallback to gpt-4.1)
+        this.model = (document.getElementById('model-picker') && document.getElementById('model-picker').value) || 'gpt-4.1';
         
         try {
             // Get text from textarea
@@ -424,7 +426,8 @@ class Translator {
             const payload = {
                 text: chunk.text,
                 target_language: this.targetLanguage,
-                context: chunk.context || this.context
+                context: chunk.context || this.context,
+                model: this.model
             };
             
             console.log(`Sending chunk ${chunk.index + 1} to translation API`);
