@@ -117,15 +117,25 @@ def translate_chunk():
             prompt = f"Please translate the following text into {AVAILABLE_LANGUAGES[target_language]}.\nEnsure accuracy and fidelity to the original, but choose natural phrasing over literal sentence structure if that sounds more natural.\nUse idiomatic expressions, adjust sentence flow, and restructure phrases where necessary to make the text feel completely fluent and natural.\nPreserve paragraph structure, line breaks, and formatting exactly as in the source text.\nHere is the text:\n{text}"
             
         # Call OpenAI API for translation
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": f"You are a professional literary translator with expertise in both the source language and {AVAILABLE_LANGUAGES[target_language]}.\nYour goal is to create a fluent, natural, and idiomatic translation that reads as if it were originally written in {AVAILABLE_LANGUAGES[target_language]}.\nEnsure accuracy and fidelity to the original, but choose natural {AVAILABLE_LANGUAGES[target_language]} syntax over copying the source word-for-word.\nAdapt idioms, expressions, and sentence structures where necessary to make the translation sound natural and fluent in {AVAILABLE_LANGUAGES[target_language]}.\n\nRephrase sentences freely when necessary to sound natural in {AVAILABLE_LANGUAGES[target_language]}. If a sentence structure is too English-like, rewrite it in the way a native speaker would phrase it. Focus on idiomatic language in dialogues and avoid direct word-for-word translations. Read every sentence as if you were a native {AVAILABLE_LANGUAGES[target_language]} author and adjust phrasing accordingly.\n\nPreserve all paragraph breaks, line breaks, and formatting exactly as in the original. Do not add, remove, or merge paragraphs.\n\nReturn only the translated text—no notes, explanations, or commentary.\nYour task is to translate meaningfully and fluently, not mechanically."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3,
-            timeout=280  # 280 second timeout
-        )
+        if model == "gpt-5":
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": f"You are a professional literary translator with expertise in both the source language and {AVAILABLE_LANGUAGES[target_language]}.\nYour goal is to create a fluent, natural, and idiomatic translation that reads as if it were originally written in {AVAILABLE_LANGUAGES[target_language]}.\nEnsure accuracy and fidelity to the original, but choose natural {AVAILABLE_LANGUAGES[target_language]} syntax over copying the source word-for-word.\nAdapt idioms, expressions, and sentence structures where necessary to make the translation sound natural and fluent in {AVAILABLE_LANGUAGES[target_language]}.\n\nRephrase sentences freely when necessary to sound natural in {AVAILABLE_LANGUAGES[target_language]}. If a sentence structure is too English-like, rewrite it in the way a native speaker would phrase it. Focus on idiomatic language in dialogues and avoid direct word-for-word translations. Read every sentence as if you were a native {AVAILABLE_LANGUAGES[target_language]} author and adjust phrasing accordingly.\n\nPreserve all paragraph breaks, line breaks, and formatting exactly as in the original. Do not add, remove, or merge paragraphs.\n\nReturn only the translated text—no notes, explanations, or commentary.\nYour task is to translate meaningfully and fluently, not mechanically."},
+                    {"role": "user", "content": prompt}
+                ],
+                timeout=280  # 280 second timeout
+            )
+        else:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": f"You are a professional literary translator with expertise in both the source language and {AVAILABLE_LANGUAGES[target_language]}.\nYour goal is to create a fluent, natural, and idiomatic translation that reads as if it were originally written in {AVAILABLE_LANGUAGES[target_language]}.\nEnsure accuracy and fidelity to the original, but choose natural {AVAILABLE_LANGUAGES[target_language]} syntax over copying the source word-for-word.\nAdapt idioms, expressions, and sentence structures where necessary to make the translation sound natural and fluent in {AVAILABLE_LANGUAGES[target_language]}.\n\nRephrase sentences freely when necessary to sound natural in {AVAILABLE_LANGUAGES[target_language]}. If a sentence structure is too English-like, rewrite it in the way a native speaker would phrase it. Focus on idiomatic language in dialogues and avoid direct word-for-word translations. Read every sentence as if you were a native {AVAILABLE_LANGUAGES[target_language]} author and adjust phrasing accordingly.\n\nPreserve all paragraph breaks, line breaks, and formatting exactly as in the original. Do not add, remove, or merge paragraphs.\n\nReturn only the translated text—no notes, explanations, or commentary.\nYour task is to translate meaningfully and fluently, not mechanically."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                timeout=280  # 280 second timeout
+            )
         
         translated_text = response.choices[0].message.content
         print("Translation successful")
