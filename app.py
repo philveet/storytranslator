@@ -101,9 +101,9 @@ def translate_chunk():
     context = data.get('context', '')
     
     # Optional model selection with whitelist
-    model = data.get('model', 'gpt-4.1')
+    model = data.get('model', 'gpt-5')
     if model not in {"gpt-4.1", "gpt-5"}:
-        model = 'gpt-4.1'
+        model = 'gpt-5'
     
     if target_language not in AVAILABLE_LANGUAGES:
         return jsonify({"error": "Unsupported target language"}), 400

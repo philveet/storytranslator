@@ -75,8 +75,8 @@ class Translator {
         // Get form data
         const form = event.target;
         this.targetLanguage = form.elements['target-language'].value;
-        // Read selected model (fallback to gpt-4.1)
-        this.model = (document.getElementById('model-picker') && document.getElementById('model-picker').value) || 'gpt-4.1';
+        // Read selected model (fallback to gpt-5)
+        this.model = (document.getElementById('model-picker') && document.getElementById('model-picker').value) || 'gpt-5';
         
         try {
             // Get text from textarea
