@@ -34,7 +34,10 @@ AVAILABLE_LANGUAGES = {
     "italian": "Italian",
     "portuguese": "Portuguese",
     "russian": "Russian",
-    "czech": "Czech"
+    "czech": "Czech",
+    "japanese": "Japanese",
+    "korean": "Korean",
+    "dutch": "Dutch"
 }
 
 # Authentication decorator
