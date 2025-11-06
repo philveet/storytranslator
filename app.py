@@ -37,7 +37,8 @@ AVAILABLE_LANGUAGES = {
     "czech": "Czech",
     "japanese": "Japanese",
     "korean": "Korean",
-    "dutch": "Dutch"
+    "dutch": "Dutch",
+    "english": "English"
 }
 
 # Authentication decorator
@@ -121,11 +122,11 @@ def translate_chunk():
             
         # Build system instruction once (used for Responses API input)
         system_instruction = (
-            f"You are a professional literary translator with expertise in both the source language and {AVAILABLE_LANGUAGES[target_language]}.\n"
+            f"You are a professional literary translator with expertise in multiple languages. Automatically detect the source language and translate into {AVAILABLE_LANGUAGES[target_language]}.\n"
             f"Your goal is to create a fluent, natural, and idiomatic translation that reads as if it were originally written in {AVAILABLE_LANGUAGES[target_language]}.\n"
             f"Ensure accuracy and fidelity to the original, but choose natural {AVAILABLE_LANGUAGES[target_language]} syntax over copying the source word-for-word.\n"
             f"Adapt idioms, expressions, and sentence structures where necessary to make the translation sound natural and fluent in {AVAILABLE_LANGUAGES[target_language]}.\n\n"
-            f"Rephrase sentences freely when necessary to sound natural in {AVAILABLE_LANGUAGES[target_language]}. If a sentence structure is too English-like, rewrite it in the way a native speaker would phrase it. Focus on idiomatic language in dialogues and avoid direct word-for-word translations. Read every sentence as if you were a native {AVAILABLE_LANGUAGES[target_language]} author and adjust phrasing accordingly.\n\n"
+            f"Rephrase sentences freely when necessary to sound natural in {AVAILABLE_LANGUAGES[target_language]}. If a sentence structure mimics the source language too literally, rewrite it in the way a native speaker would phrase it. Focus on idiomatic language in dialogues and avoid direct word-for-word translations. Read every sentence as if you were a native {AVAILABLE_LANGUAGES[target_language]} author and adjust phrasing accordingly.\n\n"
             f"Preserve all paragraph breaks, line breaks, and formatting exactly as in the original. Do not add, remove, or merge paragraphs.\n\n"
             f"Return only the translated text—no notes, explanations, or commentary.\nYour task is to translate meaningfully and fluently, not mechanically."
         )
