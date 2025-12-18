@@ -19,6 +19,7 @@ class Translator {
         this.abortController = null;
         this.context = '';
         this.apiKey = '';  // BYOK: User's API key (never persisted)
+        this.translationId = '';  // Unique ID for client caching on server
         
         // Elements
         this.progressBar = document.getElementById('progress-bar');
@@ -139,6 +140,9 @@ class Translator {
         
         this.isTranslating = true;
         this.abortController = new AbortController();
+        
+        // Generate unique translation ID for server-side client caching
+        this.translationId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
         // Reset state
         this.chunks = [];
@@ -443,7 +447,8 @@ class Translator {
                 target_language: this.targetLanguage,
                 context: chunk.context || this.context,
                 model: this.model,
-                api_key: this.apiKey  // BYOK: Include user's API key
+                api_key: this.apiKey,  // BYOK: Include user's API key
+                translation_id: this.translationId  // For server-side client caching
             };
             
             console.log(`Sending chunk ${chunk.index + 1} to translation API`);
@@ -656,8 +661,9 @@ class Translator {
         // Clear context
         this.context = '';
         
-        // BYOK: Clear API key from memory after translation (security best practice)
+        // BYOK: Clear API key and translation ID from memory after translation
         this.apiKey = '';
+        this.translationId = '';
         
         // Force garbage collection consideration without blocking UI
         setTimeout(() => {

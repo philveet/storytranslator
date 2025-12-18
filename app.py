@@ -1,4 +1,7 @@
 import os
+import time
+import hashlib
+from threading import Lock
 from flask import Flask, request, jsonify, render_template, session
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -8,6 +11,37 @@ from functools import wraps
 
 # Load environment variables
 load_dotenv()
+
+# BYOK Client Cache - reuse clients within a translation session for performance
+_client_cache = {}
+_client_cache_lock = Lock()
+_CLIENT_TTL = 1800  # 30 minute TTL
+
+def _get_or_create_client(api_key, translation_id):
+    """Get cached OpenAI client or create new one for connection reuse."""
+    # Create cache key from translation_id and hashed api_key (for security)
+    key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16]
+    cache_key = f"{translation_id}:{key_hash}"
+    
+    with _client_cache_lock:
+        current_time = time.time()
+        
+        # Clean expired entries (lazy cleanup)
+        expired = [k for k, (_, _, ts) in _client_cache.items() if current_time - ts > _CLIENT_TTL]
+        for k in expired:
+            del _client_cache[k]
+        
+        # Check cache
+        if cache_key in _client_cache:
+            client, stored_hash, _ = _client_cache[cache_key]
+            if stored_hash == key_hash:  # Verify API key matches
+                _client_cache[cache_key] = (client, stored_hash, current_time)  # Update timestamp
+                return client
+        
+        # Create new client
+        client = OpenAI(api_key=api_key)
+        _client_cache[cache_key] = (client, key_hash, current_time)
+        return client
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for development
@@ -106,6 +140,9 @@ def translate_chunk():
     if not api_key:
         return jsonify({"error": "API key is required"}), 400
     
+    # Get translation_id for client caching (improves performance via connection reuse)
+    translation_id = data.get('translation_id', 'default')
+    
     text = data['text']
     target_language = data['target_language']
     context = data.get('context', '')
@@ -137,8 +174,8 @@ def translate_chunk():
             f"Return only the translated text—no notes, explanations, or commentary.\nYour task is to translate meaningfully and fluently, not mechanically."
         )
         
-        # BYOK: Create per-request OpenAI client with user's API key
-        user_client = OpenAI(api_key=api_key)
+        # BYOK: Get or create cached OpenAI client for connection reuse
+        user_client = _get_or_create_client(api_key, translation_id)
         
         # Call OpenAI API for translation (Responses API)
         if model == "gpt-5":
