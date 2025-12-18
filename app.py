@@ -19,8 +19,9 @@ if not secret_key:
     secret_key = "dev-secret-key"
 app.secret_key = secret_key
 
-# Configure OpenAI
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# BYOK Model: OpenAI client is created per-request with user's API key
+# The server-side OPENAI_API_KEY env var is no longer used for translations
+# (Kept for potential future admin/testing use)
 
 # Authentication
 USERNAME = os.getenv("AUTH_USERNAME")
@@ -92,13 +93,18 @@ def get_languages():
     return jsonify(AVAILABLE_LANGUAGES)
 
 @app.route('/translate-chunk', methods=['POST'])
-@require_auth
+# @require_auth  # Disabled for BYOK model - uncomment to re-enable auth
 def translate_chunk():
-    print("Received translation request:", request.json)
+    print("Received translation request")  # Don't log full request (contains API key)
     data = request.json
     
     if not data or 'text' not in data or 'target_language' not in data:
         return jsonify({"error": "Missing required parameters"}), 400
+    
+    # BYOK: Get API key from request (required)
+    api_key = data.get('api_key', '').strip()
+    if not api_key:
+        return jsonify({"error": "API key is required"}), 400
     
     text = data['text']
     target_language = data['target_language']
@@ -131,15 +137,18 @@ def translate_chunk():
             f"Return only the translated text—no notes, explanations, or commentary.\nYour task is to translate meaningfully and fluently, not mechanically."
         )
         
+        # BYOK: Create per-request OpenAI client with user's API key
+        user_client = OpenAI(api_key=api_key)
+        
         # Call OpenAI API for translation (Responses API)
         if model == "gpt-5":
-            response = client.responses.create(
+            response = user_client.responses.create(
                 model=model,
                 input=f"{system_instruction}\n\n{prompt}",
                 timeout=280  # 280 second timeout
             )
         else:
-            response = client.responses.create(
+            response = user_client.responses.create(
                 model=model,
                 input=f"{system_instruction}\n\n{prompt}",
                 temperature=0.3,
@@ -157,8 +166,16 @@ def translate_chunk():
         })
         
     except Exception as e:
-        print(f"Translation error: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        error_str = str(e)
+        print(f"Translation error: {error_str}")
+        
+        # Provide clearer error messages for common API key issues
+        if "invalid_api_key" in error_str.lower() or "incorrect api key" in error_str.lower():
+            return jsonify({"error": "Invalid API key. Please check your OpenAI API key and try again."}), 401
+        if "insufficient_quota" in error_str.lower() or "exceeded" in error_str.lower():
+            return jsonify({"error": "API quota exceeded. Please check your OpenAI account billing."}), 402
+        
+        return jsonify({"error": error_str}), 500
 
 if __name__ == '__main__':
     app.run(debug=os.getenv('FLASK_ENV') == 'development') 

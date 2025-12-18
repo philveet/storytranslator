@@ -18,6 +18,7 @@ class Translator {
         this.isTranslating = false;
         this.abortController = null;
         this.context = '';
+        this.apiKey = '';  // BYOK: User's API key (never persisted)
         
         // Elements
         this.progressBar = document.getElementById('progress-bar');
@@ -78,7 +79,19 @@ class Translator {
         // Read selected model (fallback to gpt-5)
         this.model = (document.getElementById('model-picker') && document.getElementById('model-picker').value) || 'gpt-5';
         
+        // BYOK: Get API key from input
+        const apiKeyInput = document.getElementById('api-key');
+        this.apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
+        
         try {
+            // BYOK: Validate API key
+            if (!this.apiKey) {
+                throw new Error('Please enter your OpenAI API key');
+            }
+            if (!this.apiKey.startsWith('sk-')) {
+                throw new Error('Invalid API key format. OpenAI API keys start with "sk-"');
+            }
+            
             // Get text from textarea
             this.originalText = document.getElementById('input-text').value.trim();
             if (!this.originalText) {
@@ -384,9 +397,11 @@ class Translator {
             console.error(`Error translating chunk ${chunk.index + 1} (attempt ${retryCount + 1}):`, error);
             
             // Check for specific error types that shouldn't be retried
-            if (error.message.includes('Authentication required')) {
-                this.showMessage('Your session has expired. Please log in again.', 'error');
-                throw error; // Don't retry auth errors
+            if (error.message.includes('API key is required') || 
+                error.message.includes('Invalid API key') ||
+                error.message.includes('API quota exceeded')) {
+                // Don't retry API key or quota errors - user needs to fix these
+                throw error;
             }
             
             if (retryCount < maxRetries) {
@@ -427,7 +442,8 @@ class Translator {
                 text: chunk.text,
                 target_language: this.targetLanguage,
                 context: chunk.context || this.context,
-                model: this.model
+                model: this.model,
+                api_key: this.apiKey  // BYOK: Include user's API key
             };
             
             console.log(`Sending chunk ${chunk.index + 1} to translation API`);
@@ -639,6 +655,9 @@ class Translator {
         
         // Clear context
         this.context = '';
+        
+        // BYOK: Clear API key from memory after translation (security best practice)
+        this.apiKey = '';
         
         // Force garbage collection consideration without blocking UI
         setTimeout(() => {

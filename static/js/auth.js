@@ -1,6 +1,16 @@
 /**
  * Authentication handling for Story Translator
+ * 
+ * NOTE: Authentication is currently DISABLED for BYOK (Bring Your Own Key) model.
+ * Users provide their own OpenAI API key, so no server-side auth is needed.
+ * This code is preserved and can be re-enabled by:
+ * 1. Setting AUTH_ENABLED = true below
+ * 2. Uncommenting @require_auth decorator in app.py
+ * 3. Removing 'hidden' class from auth-section in index.html
+ * 4. Adding 'hidden' class to app-section in index.html
  */
+
+const AUTH_ENABLED = false;  // Set to true to re-enable authentication
 
 class Auth {
     constructor() {
@@ -15,6 +25,13 @@ class Auth {
     }
 
     init() {
+        // BYOK mode: Skip authentication entirely
+        if (!AUTH_ENABLED) {
+            this.isAuthenticated = true;
+            this.showApp();
+            return;
+        }
+        
         // Check if already authenticated
         this.checkAuthStatus();
 

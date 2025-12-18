@@ -266,6 +266,31 @@ input:focus, textarea:focus, select:focus {
     margin-top: 0.25rem;
 }
 
+/* BYOK API Key Notice */
+.api-key-notice {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #aaa;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.api-key-notice .privacy-icon {
+    font-size: 1rem;
+}
+
+.api-key-notice a {
+    color: var(--secondary-color);
+    text-decoration: none;
+    margin-left: auto;
+}
+
+.api-key-notice a:hover {
+    text-decoration: underline;
+}
+
 /* Utility Classes */
 .hidden {
     display: none !important;
