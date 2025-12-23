@@ -73,7 +73,8 @@ AVAILABLE_LANGUAGES = {
     "japanese": "Japanese",
     "korean": "Korean",
     "dutch": "Dutch",
-    "english": "English"
+    "english": "English",
+    "polish": "Polish"
 }
 
 # Authentication decorator
